@@ -1,0 +1,10 @@
+FROM python:3.14-slim-trixie
+
+RUN pip install --no-cache-dir \
+        requests==2.19.1 \
+        PyYAML==3.13 \
+        Jinja2==2.10
+
+WORKDIR /app
+RUN printf 'print("hello docker!")\n' > hello.py
+CMD ["python", "hello.py"]

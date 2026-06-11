@@ -1,0 +1,11 @@
+FROM node:lts-trixie-slim
+
+WORKDIR /app
+
+RUN npm install --no-audit --no-fund \
+        lodash@4.17.4 \
+        minimist@1.2.0 \
+        axios@0.21.0
+
+RUN printf 'console.log("hello docker!");\n' > index.js
+CMD ["node", "index.js"]
