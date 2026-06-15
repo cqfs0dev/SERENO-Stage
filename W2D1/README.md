@@ -22,3 +22,40 @@ Pour le premier jour (après-midi, le matin étant occupé avec les réunions de
 # ...
 
 ```
+
+- 🍒🍒🍒 (Super Bonus): Envoyer le message sur Discord via `scan.py` en suivant le même format que dans le terminal
+
+```bash
+> SCAN REPORT: manual scan tests
+> -------------------------
+
+> Docker Image: Hello-Node
+> Vuln(s) found:
+
+> debian 13.5
+> critical: 2
+> -  perl-base
+> -  perl-base
+
+> node-pkg
+> critical: 2
+> - lodash
+> - minimist
+
+> -------------------------
+
+> Docker Image: Hello-Py
+> Vuln(s) found:
+
+> debian 13.5
+> critical: 2
+> -  perl-base
+> -  perl-base
+
+> python-pkg
+> critical: 2
+> - PyYAML
+> - PyYAML
+
+> -------------------------
+```
