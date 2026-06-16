@@ -93,6 +93,60 @@ def parse_vulnerabilities(output):
 
     return counts
 
+def parse_sections(output, display_levels):
+    section_pattern = re.compile(r'^(.+?)\n=+\n', re.MULTILINE)
+    sections = []
+    matches = list(section_pattern.finditer(output))
+
+    for i, match in enumerate(matches):
+        raw_header = match.group(1).strip()
+        start = match.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(output)
+        block = output[start:end]
+
+        header_match = re.match(r'^.+?\((.+?)\)$', raw_header)
+        header = header_match.group(1).strip() if header_match else raw_header
+
+        counts = {lvl: 0 for lvl in VALID_LEVELS}
+        total_match = re.search(r'Total:\s*\d+\s*\((.+?)\)', block)
+        if total_match:
+            for m in re.finditer(r'(\w+):\s*(\d+)', total_match.group(1)):
+                lvl = m.group(1).lower()
+                if lvl in counts:
+                    counts[lvl] = int(m.group(2))
+
+        packages = {lvl: [] for lvl in VALID_LEVELS}
+        for row in re.finditer(r'│\s*(\S+)\s*│\s*\S+\s*│\s*(\w+)\s*│', block):
+            pkg = row.group(1).strip()
+            severity = row.group(2).strip().lower()
+            if severity in packages:
+                packages[severity].append(pkg)
+
+        if any(counts[lvl] > 0 for lvl in display_levels):
+            sections.append({"header": header, "counts": counts, "packages": packages})
+
+    return sections
+
+
+def format_discord_message(image, project, sections, display_levels):
+    lines = [
+        f"> SCAN REPORT: {project}",
+        "> -------------------------",
+        f"> Docker Image: {image}",
+        "> Vuln(s) found:",
+    ]
+    for section in sections:
+        lines.append(f"> {section['header']}")
+        for level in display_levels:
+            count = section["counts"].get(level, 0)
+            if count == 0:
+                continue
+            lines.append(f"> {level}: {count}")
+            for pkg in section["packages"].get(level, []):
+                lines.append(f"> -  {pkg}")
+    lines.append("> -------------------------")
+    return "\n".join(lines)
+
 def send_discord_notification(webhook_url, message):
 
      # payload = build_discord_embed(image, counts, display_levels)
@@ -123,8 +177,7 @@ def main():
     output = run_trivy(image)
     counts = parse_vulnerabilities(output)
 
-    display_levels = levels if levels is not None else VALID_LEVELS
-
+    display_levels = sorted(levels, key=lambda l: VALID_LEVELS.index(l)) if levels is not None else VALID_LEVELS
     result = ""
     for level in display_levels:
         result += f"{level}: {counts[level]}\n"
@@ -133,9 +186,11 @@ def main():
     print("-------------------------")
     print(result)
 
-    
+    sections = parse_sections(output, display_levels)
+    message = format_discord_message(image, project, sections, display_levels)
+    send_discord_notification(webhook_url or DISCORD_WEBHOOK_URL, message)
+   
    # send_discord_notification(DISCORD_WEBHOOK_URL, result)
-
 
 if __name__ == "__main__":
     main()
