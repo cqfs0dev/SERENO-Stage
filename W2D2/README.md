@@ -59,3 +59,11 @@ Pour le second jour, on continue :
 
 > -------------------------
 ```
+
+- [ ] S'assurer que l'ordre des vulnérabilités affichées soit toujours de la plus sévère à la moins sévère quelque soit l'ordre des valeurs données à l'argument `--level=`
+
+> Exemple:
+> ... --level=critical,high ...
+> et
+> ... --level=high,critical ...
+> affiche toujours les vulnérabilités `critical` en premier et les vulnérabilités `high`
