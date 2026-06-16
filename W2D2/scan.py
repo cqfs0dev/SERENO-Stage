@@ -14,8 +14,9 @@ load_dotenv()
 
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
-
+#Titrage des niveaux de vulnérabilité valides
 VALID_LEVELS = ["critical", "high", "medium", "low", "unknown"]
+
 
 SEVERITY_COLORS = {
     "critical": 0xE74C3C,
@@ -30,6 +31,7 @@ def parse_args():
     image = None
     levels = None
     webhook_url = None
+    project = "default unset project"
 
     for arg in sys.argv[1:]:
         if arg.startswith("--image="):
@@ -40,6 +42,8 @@ def parse_args():
             levels = arg[len("--level="):]
         elif arg.startswith("--discord-webhook="):
             webhook_url = arg[len("--discord-webhook="):]
+        elif arg.startswith("--project="):
+            project = arg[len("--project="):]
 
     if image is None or image == "":
         print("Erreur : image est obligatoire")
@@ -52,8 +56,8 @@ def parse_args():
             if l not in VALID_LEVELS:
                 print(f"error: {l} is not a CVE valid level")
                 sys.exit(1)
-
-    return image, levels, webhook_url
+    
+    return image, levels, webhook_url, project
 
 
 def run_trivy(image):
@@ -89,54 +93,10 @@ def parse_vulnerabilities(output):
 
     return counts
 
+def send_discord_notification(webhook_url, message):
 
-def build_discord_embed(image, counts, display_levels):
-    embed_color = 0x2ECC71
-    for level in ["critical", "high", "medium", "low", "unknown"]:
-        if level in display_levels and counts.get(level, 0) > 0:
-            embed_color = SEVERITY_COLORS[level]
-            break
-
-    level_emojis = {
-        "critical": "🔴",
-        "high":     "🟠",
-        "medium":   "🟡",
-        "low":      "🟢",
-        "unknown":  "⚪",
-    }
-
-    fields = [
-        {
-            "name": f"{level_emojis.get(level, '')} {level.upper()}",
-            "value": str(counts.get(level, 0)),
-            "inline": True,
-        }
-        for level in display_levels
-    ]
-
-    total = sum(counts.get(l, 0) for l in display_levels)
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    payload = {
-        "username": "Trivy Scanner",
-        "embeds": [
-            {
-                "title": "🔍 Scan Trivy terminé",
-                "description": f"**Image :** `{image}`\n**Total vulnérabilités :** {total}",
-                "color": embed_color,
-                "fields": fields,
-                "footer": {"text": "Trivy Security Scanner"},
-                "timestamp": timestamp,
-            }
-        ],
-    }
-    return payload
-
-
-def send_discord_notification(webhook_url, image, counts, display_levels):
-
-    payload = build_discord_embed(image, counts, display_levels)
-    data = json.dumps({"content": "hello from scan"}).encode("utf-8")
+     # payload = build_discord_embed(image, counts, display_levels)
+    data = json.dumps({"content": message}).encode("utf-8")
 
     req = urllib.request.Request(
         webhook_url,
@@ -158,17 +118,23 @@ def send_discord_notification(webhook_url, image, counts, display_levels):
 
 
 def main():
-    image, levels, webhook_url = parse_args()
+    image, levels, webhook_url, project = parse_args()
+
     output = run_trivy(image)
     counts = parse_vulnerabilities(output)
 
     display_levels = levels if levels is not None else VALID_LEVELS
 
-    result = " ".join(f"{level}: {counts[level]}" for level in display_levels)
+    result = ""
+    for level in display_levels:
+        result += f"{level}: {counts[level]}\n"
+   
+    print(f"SCAN REPORT: {project}")
+    print("-------------------------")
     print(result)
 
     
-    send_discord_notification(DISCORD_WEBHOOK_URL, image, counts, display_levels)
+   # send_discord_notification(DISCORD_WEBHOOK_URL, result)
 
 
 if __name__ == "__main__":
