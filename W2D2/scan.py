@@ -14,8 +14,9 @@ load_dotenv()
 
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
-
+#Titrage des niveaux de vulnérabilité valides
 VALID_LEVELS = ["critical", "high", "medium", "low", "unknown"]
+
 
 SEVERITY_COLORS = {
     "critical": 0xE74C3C,
@@ -30,6 +31,7 @@ def parse_args():
     image = None
     levels = None
     webhook_url = None
+    project = "default unset project"
 
     for arg in sys.argv[1:]:
         if arg.startswith("--image="):
@@ -40,6 +42,8 @@ def parse_args():
             levels = arg[len("--level="):]
         elif arg.startswith("--discord-webhook="):
             webhook_url = arg[len("--discord-webhook="):]
+        elif arg.startswith("--project="):
+            project = arg[len("--project="):]
 
     if image is None or image == "":
         print("Erreur : image est obligatoire")
@@ -52,8 +56,8 @@ def parse_args():
             if l not in VALID_LEVELS:
                 print(f"error: {l} is not a CVE valid level")
                 sys.exit(1)
-
-    return image, levels, webhook_url
+    
+    return image, levels, webhook_url, project
 
 
 def run_trivy(image):
@@ -89,54 +93,64 @@ def parse_vulnerabilities(output):
 
     return counts
 
+def parse_sections(output, display_levels):
+    section_pattern = re.compile(r'^(.+?)\n=+\n', re.MULTILINE)
+    sections = []
+    matches = list(section_pattern.finditer(output))
 
-def build_discord_embed(image, counts, display_levels):
-    embed_color = 0x2ECC71
-    for level in ["critical", "high", "medium", "low", "unknown"]:
-        if level in display_levels and counts.get(level, 0) > 0:
-            embed_color = SEVERITY_COLORS[level]
-            break
+    for i, match in enumerate(matches):
+        raw_header = match.group(1).strip()
+        start = match.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(output)
+        block = output[start:end]
 
-    level_emojis = {
-        "critical": "🔴",
-        "high":     "🟠",
-        "medium":   "🟡",
-        "low":      "🟢",
-        "unknown":  "⚪",
-    }
+        header_match = re.match(r'^.+?\((.+?)\)$', raw_header)
+        header = header_match.group(1).strip() if header_match else raw_header
 
-    fields = [
-        {
-            "name": f"{level_emojis.get(level, '')} {level.upper()}",
-            "value": str(counts.get(level, 0)),
-            "inline": True,
-        }
-        for level in display_levels
+        counts = {lvl: 0 for lvl in VALID_LEVELS}
+        total_match = re.search(r'Total:\s*\d+\s*\((.+?)\)', block)
+        if total_match:
+            for m in re.finditer(r'(\w+):\s*(\d+)', total_match.group(1)):
+                lvl = m.group(1).lower()
+                if lvl in counts:
+                    counts[lvl] = int(m.group(2))
+
+        packages = {lvl: [] for lvl in VALID_LEVELS}
+        for row in re.finditer(r'│\s*(\S+)\s*│\s*\S+\s*│\s*(\w+)\s*│', block):
+            pkg = row.group(1).strip()
+            severity = row.group(2).strip().lower()
+            if severity in packages:
+                packages[severity].append(pkg)
+
+        if any(counts[lvl] > 0 for lvl in display_levels):
+            sections.append({"header": header, "counts": counts, "packages": packages})
+
+    return sections
+
+
+def format_discord_message(image, project, sections, display_levels):
+    lines = [
+        f"> SCAN REPORT: {project}",
+        "> -------------------------",
+        f"> Docker Image: {image}",
+        "> Vuln(s) found:",
     ]
+    for section in sections:
+        lines.append(f"> {section['header']}")
+        for level in display_levels:
+            count = section["counts"].get(level, 0)
+            if count == 0:
+                continue
+            lines.append(f"> {level}: {count}")
+            for pkg in section["packages"].get(level, []):
+                lines.append(f"> -  {pkg}")
+    lines.append("> -------------------------")
+    return "\n".join(lines)
 
-    total = sum(counts.get(l, 0) for l in display_levels)
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+def send_discord_notification(webhook_url, message):
 
-    payload = {
-        "username": "Trivy Scanner",
-        "embeds": [
-            {
-                "title": "🔍 Scan Trivy terminé",
-                "description": f"**Image :** `{image}`\n**Total vulnérabilités :** {total}",
-                "color": embed_color,
-                "fields": fields,
-                "footer": {"text": "Trivy Security Scanner"},
-                "timestamp": timestamp,
-            }
-        ],
-    }
-    return payload
-
-
-def send_discord_notification(webhook_url, image, counts, display_levels):
-
-    payload = build_discord_embed(image, counts, display_levels)
-    data = json.dumps({"content": "hello from scan"}).encode("utf-8")
+     # payload = build_discord_embed(image, counts, display_levels)
+    data = json.dumps({"content": message}).encode("utf-8")
 
     req = urllib.request.Request(
         webhook_url,
@@ -158,18 +172,25 @@ def send_discord_notification(webhook_url, image, counts, display_levels):
 
 
 def main():
-    image, levels, webhook_url = parse_args()
+    image, levels, webhook_url, project = parse_args()
+
     output = run_trivy(image)
     counts = parse_vulnerabilities(output)
 
-    display_levels = levels if levels is not None else VALID_LEVELS
-
-    result = " ".join(f"{level}: {counts[level]}" for level in display_levels)
+    display_levels = sorted(levels, key=lambda l: VALID_LEVELS.index(l)) if levels is not None else VALID_LEVELS
+    result = ""
+    for level in display_levels:
+        result += f"{level}: {counts[level]}\n"
+   
+    print(f"SCAN REPORT: {project}")
+    print("-------------------------")
     print(result)
 
-    
-    send_discord_notification(DISCORD_WEBHOOK_URL, image, counts, display_levels)
-
+    sections = parse_sections(output, display_levels)
+    message = format_discord_message(image, project, sections, display_levels)
+    send_discord_notification(webhook_url or DISCORD_WEBHOOK_URL, message)
+   
+   # send_discord_notification(DISCORD_WEBHOOK_URL, result)
 
 if __name__ == "__main__":
     main()
