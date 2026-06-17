@@ -1,0 +1,73 @@
+SCAN REPORT : default unset project
+Date        : 2026-06-17 12:04 UTC
+============================================================
+
+IMAGE : hello-node:latest
+----------------------------------------
+  [ debian 13.5 ]
+    CRITICAL (2)
+      • perl-base  CVE-2026-42496
+    HIGH (9)
+      • libsqlite3-0  CVE-2026-11822
+      • libtinfo6  CVE-2025-69720
+      • ncurses-base  CVE-2025-69720
+      • ncurses-bin  CVE-2025-69720
+    MEDIUM (33)
+      • bsdutils  CVE-2026-27456
+      • libblkid1  CVE-2026-27456
+      • libbz2-1.0  CVE-2026-42250
+      • liblastlog2-2  CVE-2026-27456
+      • liblzma5  CVE-2026-34743
+      • libsmartcols1  CVE-2026-27456
+      • libuuid1  CVE-2026-27456
+      • login  CVE-2026-27456
+      • mount  CVE-2026-27456
+      • tar  CVE-2026-5704
+      • util-linux  CVE-2026-27456
+      • zlib1g  CVE-2026-27171
+    LOW (62)
+      • sysvinit-utils  TEMP-0517018-A83CE6
+    UNKNOWN (5)
+      • libpam-modules  CVE-2026-54411
+
+  [ node-pkg ]
+    CRITICAL (2)
+    HIGH (15)
+    MEDIUM (19)
+    LOW (2)
+
+
+IMAGE : hello-py:latest
+----------------------------------------
+  [ debian 13.5 ]
+    CRITICAL (2)
+      • perl-base  CVE-2026-42496
+    HIGH (10)
+      • libncursesw6  CVE-2025-69720
+      • libsqlite3-0  CVE-2026-11822
+      • libtinfo6  CVE-2025-69720
+      • ncurses-base  CVE-2025-69720
+      • ncurses-bin  CVE-2025-69720
+    MEDIUM (33)
+      • bsdutils  CVE-2026-27456
+      • libblkid1  CVE-2026-27456
+      • libbz2-1.0  CVE-2026-42250
+      • liblastlog2-2  CVE-2026-27456
+      • liblzma5  CVE-2026-34743
+      • libsmartcols1  CVE-2026-27456
+      • libuuid1  CVE-2026-27456
+      • login  CVE-2026-27456
+      • mount  CVE-2026-27456
+      • tar  CVE-2026-5704
+      • util-linux  CVE-2026-27456
+      • zlib1g  CVE-2026-27171
+    LOW (63)
+      • sysvinit-utils  TEMP-0517018-A83CE6
+    UNKNOWN (5)
+      • libpam-modules  CVE-2026-54411
+
+  [ python-pkg ]
+    CRITICAL (2)
+    HIGH (7)
+    MEDIUM (17)
+
