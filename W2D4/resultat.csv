@@ -1,0 +1,6 @@
+image_name_and_tag,docker_hub_critical,docker_hub_high,docker_hub_medium,docker_hub_low,docker_hub_unspecified,scan_trivy_critical,scan_trivy_high,scan_trivy_medium,scan_trivy_low,scan_trivy_unknown
+python:3.13-slim,0,0,1,21,0,2,9,39,63,36
+python:3.13-alpine,0,0,1,2,0,,,,,
+python:3.13-slim-bookworm,0,1,1,16,0,4,9,48,76,16
+python:3.13,0,1,5,166,0,28,189,516,994,67
+python:3.11,0,4,3,149,0,,,,,
