@@ -1,0 +1,46 @@
+SCAN REPORT: default unset project
+-------------------------
+
+Docker Image: scanner:latest
+Vuln(s) found:
+
+debian 13.5
+critical: 2
+- perl-base
+high: 14
+- curl
+- libcurl4t64
+- libncursesw6
+- libsqlite3-0
+- libssh2-1t64
+- libtinfo6
+- ncurses-base
+- ncurses-bin
+medium: 57
+- bsdutils
+- libblkid1
+- libbz2-1.0
+- liblastlog2-2
+- liblzma5
+- libpam-modules
+- libuuid1
+- login
+- mount
+- tar
+- util-linux
+- zlib1g
+low: 108
+- coreutils
+- libldap-common
+- libsystemd0
+- login.defs
+unknown: 38
+
+python-pkg
+medium: 3
+low: 1
+
+-------------------------
+
+📄 Rapport txt sauvegardé : scan_default-unset-project_2026-06-19.txt
+⚠️  Aucun webhook Discord configuré, rapport non envoyé.
