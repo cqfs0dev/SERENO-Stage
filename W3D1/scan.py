@@ -41,6 +41,7 @@ SEVERITY_EMOJI = {
 
 def parse_args():
     images = []
+    archives = []
     levels = None
     webhook_url = None
     project = "default unset project"
@@ -49,6 +50,8 @@ def parse_args():
     for arg in sys.argv[1:]:
         if arg.startswith("--image="):
             images.append(arg[len("--image=") :])
+        elif arg.startswith("--archive="):
+            archives.append(arg[len("--archive=") :])
         elif arg.startswith("--level="):
             levels = arg[len("--level=") :]
         elif arg.startswith("--discord-webhook="):
@@ -58,8 +61,8 @@ def parse_args():
         elif arg.startswith("--pipeline-url="):
             pipeline_url = arg[len("--pipeline-url=") :]
 
-    if not images:
-        print("Erreur : au moins une image est obligatoire")
+    if not images and not archives:
+        print("Erreur : au moins une image ou une archive est obligatoire")
         print(
             "Usage : python scan.py --image=<image1> [--image=<image2>] [--level=critical,high,...] [--project=<name>]"
         )
@@ -72,7 +75,7 @@ def parse_args():
                 print(f"error: {l} is not a valid CVE level")
                 sys.exit(1)
 
-    return images, levels, webhook_url, project, pipeline_url
+    return images, archives, levels, webhook_url, project, pipeline_url
 
 
 # ---------------------------------------------------------------------------
@@ -80,30 +83,26 @@ def parse_args():
 # ---------------------------------------------------------------------------
 
 
-def run_trivy(image):
-    tar_path = f"/tmp/trivy_scan_{image.replace('/', '_').replace(':', '_')}.tar"
+def run_trivy(target):
+    is_archive = target.endswith(".tar")
+    sub_command = ["trivy", "image", "--input", target] if is_archive else ["trivy", "image", target]
     try:
-        subprocess.run(
-            ["docker", "save", image, "-o", tar_path],
-            capture_output=True,
-            check=True,
-        )
         result = subprocess.run(
-            ["trivy", "image", "--input", tar_path],
+            sub_command,
             capture_output=True,
             text=True,
         )
-        return result.stdout + result.stderr
+        if result.returncode != 0:
+            print("Erreur : l'image ou l'archive n'existe pas: build ou build + save est necessaire avant le scan.")
+            print("Trivy's stderr:", result.stderr)
+            sys.exit(1)
 
-    except subprocess.CalledProcessError:
-        print(f"Erreur : docker save a échoué pour {image}")
+        return result.stdout
+    except Exception:
+        print(
+            "Erreur : lors de l'analyse avec trivy",
+        )
         sys.exit(1)
-    except FileNotFoundError:
-        print("Erreur : 'trivy' est introuvable.")
-        sys.exit(1)
-    finally:
-        if os.path.exists(tar_path):
-            os.remove(tar_path)
 
 
 # ---------------------------------------------------------------------------
@@ -387,24 +386,24 @@ def send_discord(webhook_url, embed, txt_filename=None, txt_content=None):
 
 
 def main():
-    images, levels, webhook_url, project, pipeline_url = parse_args()
+    images, archives, levels, webhook_url, project, pipeline_url = parse_args()
 
     display_levels = sorted(levels, key=lambda l: VALID_LEVELS.index(l)) if levels is not None else VALID_LEVELS
 
     effective_webhook = webhook_url or DISCORD_WEBHOOK_URL
 
-    # Scan toutes les images
-    image_reports = []
-    for image in images:
-        output = run_trivy(image)
+    # Scan toutes les cibles
+    reports = []
+    for target in [*images, *archives]:
+        output = run_trivy(target)
         sections = parse_sections(output, display_levels)
-        image_reports.append((image, sections, display_levels))
+        reports.append((target, sections, display_levels))
 
     # ── Sortie 1 : Terminal ────────────────────────────────────────────────
-    print_report(project, image_reports)
+    print_report(project, reports)
 
     # ── Sortie 3 : Discord (un seul embed global trié par sévérité) ────────
-    embed = build_embed_b(project, image_reports, display_levels, pipeline_url)
+    embed = build_embed_b(project, reports, display_levels, pipeline_url)
 
     # ── Sortie 2 : Fichier .txt — généré dès que l'embed renvoie vers un
     # "rapport joint" (HIGH tronqué, ou MEDIUM/LOW/UNKNOWN non vides),
@@ -413,7 +412,7 @@ def main():
         "rapport joint" in field["value"] for field in embed["fields"]
     )
     if needs_report:
-        txt_filename, txt_content = save_txt_report(project, image_reports, pipeline_url)
+        txt_filename, txt_content = save_txt_report(project, reports, pipeline_url)
     else:
         txt_filename, txt_content = None, None
 

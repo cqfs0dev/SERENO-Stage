@@ -52,3 +52,38 @@ Etapes du jour:
   - Chercher comment exécuter une image docker depuis une github action
 - Lire la documentation Github sur la gestion des secrets (pour l'url du webhook Discord) https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets?versionId=free-pro-team%40latest&productId=actions
 - Chercher comment rendre l'image docker `scanner:latest` qui est pour le moment utniquement en local sur ta machine, publique sur internet (gratuitement) avec par exemple: https://docs.docker.com/docker-hub
+
+Solution à l'étape 8 pour scanner une imag(archive) depuis docker sans avoir besoin d'accéder au daemon:
+
+1. Dans docker
+
+- Scanner l'archive tarball `.tar` plutôt que l'image du daemon `<image>:<tag>`
+- On build l'image docker du scanner, depuis le dossier du jour courant (exemple: W3D1)
+
+```bash
+cd ./W3D1
+docker buildx build -t scanner:w3d1 .
+```
+
+- On sauvegarde l'image en archive tarball dans le dossier courant:
+
+```bash
+docker save scanner:w3d1 -o scanner-w3d1.tar
+```
+
+- On run le scan depuis docker sur l'archive (et non pas sur l'image qui necessite l'accès à la socket du daemon) en montant un volume qui donne accès au dossier courant dans le dossier `work` du container:
+
+```bash
+docker run -v $(pwd):/work -e DISCORD_WEBHOOK_URL=*** scanner:w3d1 --archive=/work/scanner-w3d1.tar --level=critical,high --project=w3d1
+```
+
+=> La notification est envoyée
+
+- Si l'image est utilisé on a une erreur parce que elle est introuvable faute de daemon accessible
+- Si l'archive est introuvable on a également une erreur
+
+2. Dans python (pour développer et/ou tester)
+
+- on peut toujours utiliser les images du daemon de la machine hôte
+- on peut utliser les archives tarball
+- on peut utiliser les deux en mêmes temps (pour comparer par exemple)

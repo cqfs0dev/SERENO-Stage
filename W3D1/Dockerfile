@@ -8,6 +8,6 @@ RUN apt-get update && apt-get install -y curl && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY ./scan.py ./scan.py
 
 ENTRYPOINT ["python", "scan.py"]
