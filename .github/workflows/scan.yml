@@ -1,0 +1,19 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull scanner image
+        run: docker pull propageur/scanner:latest
+
+      - name: Run scan
+        run: |
+          docker run --rm propageur/scanner:latest \
+            --image=propageur/scanner:latest \
+            --discord-webhook=${{ secrets.DISCORD_WEBHOOK_URL }} \
+            --project="SERENO"
