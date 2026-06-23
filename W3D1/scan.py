@@ -1,10 +1,10 @@
-import sys
-import subprocess
-import re
-import urllib.request
-import urllib.error
 import json
 import os
+import re
+import subprocess
+import sys
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
@@ -19,24 +19,25 @@ HIGH_DETAIL_MAX = 5
 
 SEVERITY_COLORS = {
     "critical": 0xE74C3C,
-    "high":     0xE67E22,
-    "medium":   0xF1C40F,
-    "low":      0x2ECC71,
-    "unknown":  0x95A5A6,
+    "high": 0xE67E22,
+    "medium": 0xF1C40F,
+    "low": 0x2ECC71,
+    "unknown": 0x95A5A6,
 }
 
 SEVERITY_EMOJI = {
     "critical": "🔴",
-    "high":     "🟠",
-    "medium":   "🟡",
-    "low":      "🟢",
-    "unknown":  "⚪",
+    "high": "🟠",
+    "medium": "🟡",
+    "low": "🟢",
+    "unknown": "⚪",
 }
 
 
 # ---------------------------------------------------------------------------
 # Arguments
 # ---------------------------------------------------------------------------
+
 
 def parse_args():
     images = []
@@ -47,19 +48,21 @@ def parse_args():
 
     for arg in sys.argv[1:]:
         if arg.startswith("--image="):
-            images.append(arg[len("--image="):])
+            images.append(arg[len("--image=") :])
         elif arg.startswith("--level="):
-            levels = arg[len("--level="):]
+            levels = arg[len("--level=") :]
         elif arg.startswith("--discord-webhook="):
-            webhook_url = arg[len("--discord-webhook="):]
+            webhook_url = arg[len("--discord-webhook=") :]
         elif arg.startswith("--project="):
-            project = arg[len("--project="):]
+            project = arg[len("--project=") :]
         elif arg.startswith("--pipeline-url="):
-            pipeline_url = arg[len("--pipeline-url="):]
+            pipeline_url = arg[len("--pipeline-url=") :]
 
     if not images:
         print("Erreur : au moins une image est obligatoire")
-        print("Usage : python scan.py --image=<image1> [--image=<image2>] [--level=critical,high,...] [--project=<name>]")
+        print(
+            "Usage : python scan.py --image=<image1> [--image=<image2>] [--level=critical,high,...] [--project=<name>]"
+        )
         sys.exit(1)
 
     if levels is not None:
@@ -76,22 +79,23 @@ def parse_args():
 # Trivy
 # ---------------------------------------------------------------------------
 
+
 def run_trivy(image):
     tar_path = f"/tmp/trivy_scan_{image.replace('/', '_').replace(':', '_')}.tar"
     try:
-      subprocess.run(
-          ["docker", "save", image, "-o", tar_path],
-          capture_output=True,
-          check=True,
-      )
-      result = subprocess.run(
-          ["trivy", "image", "--input", tar_path],
-           capture_output=True,
-          text=True,
-      )
-      return result.stdout + result.stderr
-    
-except subprocess.CalledProcessError:
+        subprocess.run(
+            ["docker", "save", image, "-o", tar_path],
+            capture_output=True,
+            check=True,
+        )
+        result = subprocess.run(
+            ["trivy", "image", "--input", tar_path],
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout + result.stderr
+
+    except subprocess.CalledProcessError:
         print(f"Erreur : docker save a échoué pour {image}")
         sys.exit(1)
     except FileNotFoundError:
@@ -106,8 +110,9 @@ except subprocess.CalledProcessError:
 # Parsing
 # ---------------------------------------------------------------------------
 
+
 def parse_sections(output, display_levels):
-    section_pattern = re.compile(r'^(.+?)\n=+\n', re.MULTILINE)
+    section_pattern = re.compile(r"^(.+?)\n=+\n", re.MULTILINE)
     sections = []
     matches = list(section_pattern.finditer(output))
 
@@ -117,19 +122,19 @@ def parse_sections(output, display_levels):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(output)
         block = output[start:end]
 
-        header_match = re.match(r'^.+?\((.+?)\)$', raw_header)
+        header_match = re.match(r"^.+?\((.+?)\)$", raw_header)
         header = header_match.group(1).strip() if header_match else raw_header
 
         counts = {lvl: 0 for lvl in VALID_LEVELS}
-        total_match = re.search(r'Total:\s*\d+\s*\((.+?)\)', block)
+        total_match = re.search(r"Total:\s*\d+\s*\((.+?)\)", block)
         if total_match:
-            for m in re.finditer(r'(\w+):\s*(\d+)', total_match.group(1)):
+            for m in re.finditer(r"(\w+):\s*(\d+)", total_match.group(1)):
                 lvl = m.group(1).lower()
                 if lvl in counts:
                     counts[lvl] = int(m.group(2))
 
         packages = {lvl: [] for lvl in VALID_LEVELS}
-        for row in re.finditer(r'│\s*(\S+)\s*│\s*(\S+)\s*│\s*(\w+)\s*│', block):
+        for row in re.finditer(r"│\s*(\S+)\s*│\s*(\S+)\s*│\s*(\w+)\s*│", block):
             pkg = row.group(1).strip()
             cve = row.group(2).strip()
             severity = row.group(3).strip().lower()
@@ -137,11 +142,13 @@ def parse_sections(output, display_levels):
                 packages[severity].append((pkg, cve))
 
         if any(counts[lvl] > 0 for lvl in display_levels):
-            sections.append({
-                "header": header,
-                "counts": counts,
-                "packages": packages,
-            })
+            sections.append(
+                {
+                    "header": header,
+                    "counts": counts,
+                    "packages": packages,
+                }
+            )
 
     return sections
 
@@ -168,6 +175,7 @@ def aggregate_by_level(image_reports):
 # ---------------------------------------------------------------------------
 # Sortie 1 : Terminal
 # ---------------------------------------------------------------------------
+
 
 def print_report(project, image_reports):
     print(f"SCAN REPORT: {project}")
@@ -198,6 +206,7 @@ def print_report(project, image_reports):
 # Sortie 2 : Fichier .txt complet (généré uniquement si nécessaire,
 # c'est-à-dire si l'embed Discord est trop long pour tout afficher)
 # ---------------------------------------------------------------------------
+
 
 def build_txt_report(project, image_reports, pipeline_url):
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -241,12 +250,13 @@ def save_txt_report(project, image_reports, pipeline_url):
 # Sortie 3 : Discord Embed — trié par sévérité (proposition B)
 # ---------------------------------------------------------------------------
 
+
 def build_embed_b(project, image_reports, display_levels, pipeline_url):
     aggregated, counts = aggregate_by_level(image_reports)
 
     # Couleur et statut global
     has_critical = counts.get("critical", 0) > 0
-    has_high     = counts.get("high", 0) > 0
+    has_high = counts.get("high", 0) > 0
     if has_critical:
         embed_color = SEVERITY_COLORS["critical"]
         status = "🔴 ACTION REQUISE"
@@ -287,11 +297,13 @@ def build_embed_b(project, image_reports, display_levels, pipeline_url):
             # Juste le compteur
             value = f"{total} vulnérabilité(s) — détail dans le rapport joint"
 
-        fields.append({
-            "name": f"{emoji} {level.upper()}  ({total})",
-            "value": value,
-            "inline": False,
-        })
+        fields.append(
+            {
+                "name": f"{emoji} {level.upper()}  ({total})",
+                "value": value,
+                "inline": False,
+            }
+        )
 
     author = {"name": f"⚠️  Project — {project}"}
     if pipeline_url:
@@ -373,14 +385,11 @@ def send_discord(webhook_url, embed, txt_filename=None, txt_content=None):
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     images, levels, webhook_url, project, pipeline_url = parse_args()
 
-    display_levels = (
-        sorted(levels, key=lambda l: VALID_LEVELS.index(l))
-        if levels is not None
-        else VALID_LEVELS
-    )
+    display_levels = sorted(levels, key=lambda l: VALID_LEVELS.index(l)) if levels is not None else VALID_LEVELS
 
     effective_webhook = webhook_url or DISCORD_WEBHOOK_URL
 
@@ -412,5 +421,7 @@ def main():
         send_discord(effective_webhook, embed, txt_filename, txt_content)
     else:
         print("⚠️  Aucun webhook Discord configuré, rapport non envoyé.")
+
+
 if __name__ == "__main__":
     main()
