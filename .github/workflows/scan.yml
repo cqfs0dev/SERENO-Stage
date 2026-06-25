@@ -2,9 +2,9 @@ name: Docker Vulnerability Scan
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   scan:
@@ -22,6 +22,7 @@ jobs:
 
       - name: Run scan - main image
         run: |
+          pwd && ls -la
           docker build -t my_local_image:latest .
           docker save my_local_image:latest -o target/my_local_image_latest.tar
           docker run -v $(pwd)/target:/target --rm propageur/scanner:latest \
