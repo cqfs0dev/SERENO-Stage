@@ -1,4 +1,4 @@
-# Jour 13
+# Jour 13-14
 
 L'objectif de la semaine est d'éxcuter le programme `scan.py` depuis son image docker dans la CI/CD avec Github Actions (éventuellement Gitlab-CI si le temps le permet) pour envoyer l'alerte quand nécessaire sur le chat de l'équipe (Discord).
 
