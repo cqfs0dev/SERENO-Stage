@@ -9,10 +9,7 @@ on:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .github/workflows
-
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,6 +19,10 @@ jobs:
 
       - name: Run scan - main image
         run: |
+          DIR=$(ls -d */ | sort -r | head -n 1 | tr -d '/')
+          echo "Selected directory: $DIR"
+          cd "$DIR"
+          pwd
           docker build -t my_local_image:latest .
           docker save my_local_image:latest -o target/my_local_image_latest.tar
           docker run -v $(pwd)/target:/target --rm propageur/scanner:latest \
@@ -30,8 +31,11 @@ jobs:
             --project="SCANNER FROM GITHUB ACTION"
 
       - name: Run scan - node
-                pwd && ls -la
         run: |
+          DIR=$(ls -d */ | sort -r | head -n 1 | tr -d '/')
+          echo "Selected directory: $DIR"
+          cd "$DIR"
+          pwd
           docker build -t node:vuln -f Dockerfile.node .
           docker save node:vuln -o target/node_vuln.tar
           docker run -v $(pwd)/target:/target --rm propageur/scanner:latest \
@@ -41,6 +45,10 @@ jobs:
 
       - name: Run scan - python
         run: |
+          DIR=$(ls -d */ | sort -r | head -n 1 | tr -d '/')
+          echo "Selected directory: $DIR"
+          cd "$DIR"
+          pwd
           docker build -t python:vuln -f Dockerfile.python .
           docker save python:vuln -o target/python_vuln.tar
           docker run -v $(pwd)/target:/target --rm propageur/scanner:latest \
