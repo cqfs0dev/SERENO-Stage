@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: W3D3
+        working-directory: .github/workflows
 
     steps:
       - name: Checkout
@@ -30,6 +30,7 @@ jobs:
             --project="SCANNER FROM GITHUB ACTION"
 
       - name: Run scan - node
+                pwd && ls -la
         run: |
           docker build -t node:vuln -f Dockerfile.node .
           docker save node:vuln -o target/node_vuln.tar
