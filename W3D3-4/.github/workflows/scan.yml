@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: W3D3
+        working-directory: W3D3-4
 
     steps:
       - name: Checkout
